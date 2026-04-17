@@ -169,9 +169,9 @@ button:disabled {
   margin-bottom: 10px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--team-color, #3b82f6) 25%, rgba(15, 23, 42, 0.95))
+    color-mix(in srgb, var(--team-color, #3b82f6) 35%, rgba(15, 23, 42, 0.95))
       0%,
-    color-mix(in srgb, var(--team-color, #3b82f6) 10%, rgba(15, 23, 42, 0.95))
+    color-mix(in srgb, var(--team-color, #3b82f6) 18%, rgba(15, 23, 42, 0.95))
       100%
   );
 }
@@ -476,9 +476,9 @@ label {
   border: 1px solid rgba(148, 163, 184, 0.15);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--team-color, #3b82f6) 25%, rgba(15, 23, 42, 0.95))
+    color-mix(in srgb, var(--team-color, #3b82f6) 35%, rgba(15, 23, 42, 0.95))
       0%,
-    color-mix(in srgb, var(--team-color, #3b82f6) 10%, rgba(15, 23, 42, 0.95))
+    color-mix(in srgb, var(--team-color, #3b82f6) 18%, rgba(15, 23, 42, 0.95))
       100%
   );
 }
@@ -552,9 +552,9 @@ label {
   border: 1px solid rgba(148, 163, 184, 0.15);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--team-color, #3b82f6) 28%, rgba(15, 23, 42, 0.95))
+    color-mix(in srgb, var(--team-color, #3b82f6) 40%, rgba(15, 23, 42, 0.95))
       0%,
-    color-mix(in srgb, var(--team-color, #3b82f6) 10%, rgba(15, 23, 42, 0.98))
+    color-mix(in srgb, var(--team-color, #3b82f6) 20%, rgba(15, 23, 42, 0.98))
       100%
   );
 }
@@ -978,13 +978,13 @@ label {
     135deg,
     color-mix(
         in srgb,
-        var(--team-color, #3b82f6) 30%,
+        var(--team-color, #3b82f6) 35%,
         rgba(255, 255, 255, 0.95)
       )
       0%,
     color-mix(
         in srgb,
-        var(--team-color, #3b82f6) 14%,
+        var(--team-color, #3b82f6) 18%,
         rgba(255, 255, 255, 0.95)
       )
       100%
