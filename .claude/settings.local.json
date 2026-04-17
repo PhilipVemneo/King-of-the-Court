@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where.exe node *)",
+      "Bash(npx vite *)",
+      "Bash(npm run *)",
+      "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\Philip\\\\Documents\\\\Projects\\\\King-of-the-Court && npm run dev\")",
+      "Bash(where.exe npm *)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" --version)",
+      "Bash(\"/c/Program Files/nodejs/npx.cmd\" vite)",
+      "WebFetch(domain:localhost)"
+    ]
+  }
+}
