@@ -57,6 +57,7 @@ const defaultState = {
   started: false,
   swapSides: false,
   darkMode: true,
+  showTeamNames: false,
   teams: defaultTeams,
   positions: {
     king: "team1",
@@ -745,9 +746,11 @@ function App() {
     }
   };
 
-  // ── Drag-and-drop for starting positions ──
+  // ── Drag-and-drop for starting positions (pointer events for touch + mouse) ──
   const [drag, setDrag] = useState(null);
   const [hoverIdx, setHoverIdx] = useState(null);
+  const positionListRef = useRef(null);
+  const dragRef = useRef(null);
 
   const orderedPositions = [
     state.positions.king,
@@ -762,21 +765,48 @@ function App() {
         ? "CHALLENGER"
         : `QUEUE ${index - 1}`;
 
-  const handleDragStart = (e, idx) => {
-    setDrag({ idx, height: e.currentTarget.offsetHeight + 6 });
-    e.dataTransfer.effectAllowed = "move";
+  const handlePointerDown = (e, idx) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const el = e.currentTarget;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+    const height = el.offsetHeight + 6;
+    dragRef.current = { idx, height, hoverIdx: idx };
+    setDrag({ idx, height });
+    setHoverIdx(idx);
   };
 
-  const handleDragOver = (e, idx) => {
-    e.preventDefault();
-    if (hoverIdx !== idx) setHoverIdx(idx);
+  const handlePointerMove = (e) => {
+    if (!dragRef.current || !positionListRef.current) return;
+    const rows = positionListRef.current.children;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i].getBoundingClientRect();
+      if (e.clientY >= r.top && e.clientY <= r.bottom) {
+        if (dragRef.current.hoverIdx !== i) {
+          dragRef.current.hoverIdx = i;
+          setHoverIdx(i);
+        }
+        return;
+      }
+    }
   };
 
-  const handleDragEnd = () => {
-    if (drag !== null && hoverIdx !== null && drag.idx !== hoverIdx) {
+  const handlePointerUp = (e) => {
+    if (!dragRef.current) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+    const { idx: fromIdx, hoverIdx: toIdx } = dragRef.current;
+    dragRef.current = null;
+    if (fromIdx !== toIdx) {
       const newOrder = [...orderedPositions];
-      const [moved] = newOrder.splice(drag.idx, 1);
-      newOrder.splice(hoverIdx, 0, moved);
+      const [moved] = newOrder.splice(fromIdx, 1);
+      newOrder.splice(toIdx, 0, moved);
       setState((prev) => ({
         ...prev,
         positions: {
@@ -931,6 +961,24 @@ function App() {
 
           <section className="panel teams-panel">
             <h2>Teams and players</h2>
+            <div className="field-group">
+              <label className="toggle-row">
+                <span>Show team names</span>
+                <span className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={state.showTeamNames}
+                    onChange={() =>
+                      setState((prev) => ({
+                        ...prev,
+                        showTeamNames: !prev.showTeamNames,
+                      }))
+                    }
+                  />
+                  <span className="toggle-track" />
+                </span>
+              </label>
+            </div>
             {state.teams.map((team, index) => (
               <div
                 key={team.id}
@@ -938,14 +986,16 @@ function App() {
                 style={{ "--team-color": team.color }}
               >
                 <div className="setup-team-inputs">
-                  <input
-                    className="setup-team-name-input"
-                    value={team.name}
-                    onChange={(event) =>
-                      handleTeamField(team.id, "name", event.target.value)
-                    }
-                    placeholder={`Team ${index + 1}`}
-                  />
+                  {state.showTeamNames && (
+                    <input
+                      className="setup-team-name-input"
+                      value={team.name}
+                      onChange={(event) =>
+                        handleTeamField(team.id, "name", event.target.value)
+                      }
+                      placeholder={`Team ${index + 1}`}
+                    />
+                  )}
                   <div className="setup-team-players">
                     <input
                       value={team.players[0]}
@@ -981,7 +1031,7 @@ function App() {
           <section className="panel starting-panel">
             <h2>Starting positions</h2>
             <p className="position-hint">Drag to reorder</p>
-            <div className="position-list">
+            <div className="position-list" ref={positionListRef}>
               {orderedPositions.map((teamId, index) => {
                 const team = teamById[teamId];
                 return (
@@ -990,11 +1040,10 @@ function App() {
                     className={
                       "position-row" + (drag?.idx === index ? " dragging" : "")
                     }
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDragEnd={handleDragEnd}
-                    onDrop={handleDragEnd}
+                    onPointerDown={(e) => handlePointerDown(e, index)}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
                     style={getPositionStyle(index)}
                   >
                     <div className="position-role-header">
@@ -1005,12 +1054,27 @@ function App() {
                       style={{ "--team-color": team?.color }}
                     >
                       <div className="queue-card-info">
-                        <div className="queue-card-name">
-                          {team?.name || teamId}
-                        </div>
-                        <div className="queue-card-players">
-                          {team?.players.filter(Boolean).join(" / ") || "TBD"}
-                        </div>
+                        {state.showTeamNames ? (
+                          <>
+                            <div className="queue-card-name">
+                              {team?.name || teamId}
+                            </div>
+                            <div className="queue-card-players">
+                              {team?.players.filter(Boolean).join(" / ") ||
+                                "TBD"}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="queue-card-name">
+                            {team?.players.filter(Boolean).length ? (
+                              team.players
+                                .filter(Boolean)
+                                .map((name, i) => <div key={i}>{name}</div>)
+                            ) : (
+                              <div>TBD</div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="queue-card-score">{team?.score ?? 0}</div>
                     </div>
@@ -1070,10 +1134,24 @@ function App() {
                   style={{ "--team-color": team.color }}
                 >
                   <div className="queue-card-info">
-                    <div className="queue-card-name">{team.name}</div>
-                    <div className="queue-card-players">
-                      {team.players.filter(Boolean).join(" / ") || "TBD"}
-                    </div>
+                    {state.showTeamNames ? (
+                      <>
+                        <div className="queue-card-name">{team.name}</div>
+                        <div className="queue-card-players">
+                          {team.players.filter(Boolean).join(" / ") || "TBD"}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="queue-card-name">
+                        {team.players.filter(Boolean).length ? (
+                          team.players
+                            .filter(Boolean)
+                            .map((name, i) => <div key={i}>{name}</div>)
+                        ) : (
+                          <div>TBD</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="queue-card-score">{team.score}</div>
                 </div>
@@ -1094,13 +1172,27 @@ function App() {
                   style={{ "--team-color": challengerTeam?.color }}
                 >
                   <div className="position-label">CHALLENGER</div>
-                  <div className="court-team-name">
-                    {challengerTeam?.name || "Challenger"}
-                  </div>
-                  <div className="court-players">
-                    {challengerTeam?.players.filter(Boolean).join(" / ") ||
-                      "Players"}
-                  </div>
+                  {state.showTeamNames ? (
+                    <>
+                      <div className="court-team-name">
+                        {challengerTeam?.name || "Challenger"}
+                      </div>
+                      <div className="court-players">
+                        {challengerTeam?.players.filter(Boolean).join(" / ") ||
+                          "Players"}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="court-team-name">
+                      {challengerTeam?.players.filter(Boolean).length ? (
+                        challengerTeam.players
+                          .filter(Boolean)
+                          .map((name, i) => <div key={i}>{name}</div>)
+                      ) : (
+                        <div>Players</div>
+                      )}
+                    </div>
+                  )}
                   <div className="court-score">
                     {challengerTeam?.score ?? 0}
                   </div>
@@ -1123,12 +1215,27 @@ function App() {
                   <div className="position-label">
                     {kingLabel.toUpperCase()}
                   </div>
-                  <div className="court-team-name">
-                    {kingTeam?.name || kingLabel}
-                  </div>
-                  <div className="court-players">
-                    {kingTeam?.players.filter(Boolean).join(" / ") || "Players"}
-                  </div>
+                  {state.showTeamNames ? (
+                    <>
+                      <div className="court-team-name">
+                        {kingTeam?.name || kingLabel}
+                      </div>
+                      <div className="court-players">
+                        {kingTeam?.players.filter(Boolean).join(" / ") ||
+                          "Players"}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="court-team-name">
+                      {kingTeam?.players.filter(Boolean).length ? (
+                        kingTeam.players
+                          .filter(Boolean)
+                          .map((name, i) => <div key={i}>{name}</div>)
+                      ) : (
+                        <div>Players</div>
+                      )}
+                    </div>
+                  )}
                   <div className="court-score">{kingTeam?.score ?? 0}</div>
                   <button
                     onClick={() => animatedRecordRound("king")}
@@ -1167,10 +1274,24 @@ function App() {
                   style={{ "--team-color": team.color }}
                 >
                   <div className="queue-card-info">
-                    <div className="queue-card-name">{team.name}</div>
-                    <div className="queue-car(--team-color, #3b82f6) 30%, rgbad-players">
-                      {team.players.filter(Boolean).join(" / ") || "TBD"}
-                    </div>
+                    {state.showTeamNames ? (
+                      <>
+                        <div className="queue-card-name">{team.name}</div>
+                        <div className="queue-card-players">
+                          {team.players.filter(Boolean).join(" / ") || "TBD"}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="queue-card-name">
+                        {team.players.filter(Boolean).length ? (
+                          team.players
+                            .filter(Boolean)
+                            .map((name, i) => <div key={i}>{name}</div>)
+                        ) : (
+                          <div>TBD</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="queue-card-score">{team.score}</div>
                 </div>
@@ -1226,23 +1347,48 @@ function App() {
                   style={{ "--team-color": team.color }}
                 >
                   <div className="queue-card-info">
-                    <div className="queue-card-name">
-                      {index === 0 && (
-                        <svg
-                          className="crown-icon"
-                          viewBox="0 0 24 24"
-                          width="16"
-                          height="16"
-                          fill="currentColor"
-                        >
-                          <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z" />
-                        </svg>
-                      )}
-                      {team.name}
-                    </div>
-                    <div className="queue-card-players">
-                      {team.players.filter(Boolean).join(" / ") || "TBD"}
-                    </div>
+                    {state.showTeamNames ? (
+                      <>
+                        <div className="queue-card-name">
+                          {index === 0 && (
+                            <svg
+                              className="crown-icon"
+                              viewBox="0 0 24 24"
+                              width="16"
+                              height="16"
+                              fill="currentColor"
+                            >
+                              <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z" />
+                            </svg>
+                          )}
+                          {team.name}
+                        </div>
+                        <div className="queue-card-players">
+                          {team.players.filter(Boolean).join(" / ") || "TBD"}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="queue-card-name">
+                        {index === 0 && (
+                          <svg
+                            className="crown-icon"
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            fill="currentColor"
+                          >
+                            <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z" />
+                          </svg>
+                        )}
+                        {team.players.filter(Boolean).length ? (
+                          team.players
+                            .filter(Boolean)
+                            .map((name, i) => <div key={i}>{name}</div>)
+                        ) : (
+                          <div>TBD</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="queue-card-score">{team.score}</div>
                 </div>

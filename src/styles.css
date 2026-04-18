@@ -278,6 +278,7 @@ button:disabled {
     transform 0.2s ease,
     opacity 0.2s ease;
   user-select: none;
+  touch-action: none;
 }
 
 .position-row:active {
