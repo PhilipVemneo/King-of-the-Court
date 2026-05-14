@@ -24,6 +24,9 @@ const defaultTeams = [
     players: ["", ""],
     score: 0,
     color: TEAM_COLORS[0],
+    currentStreak: 0,
+    bestStreak: 0,
+    firstKingSideRank: null,
   },
   {
     id: "team2",
@@ -31,6 +34,9 @@ const defaultTeams = [
     players: ["", ""],
     score: 0,
     color: TEAM_COLORS[1],
+    currentStreak: 0,
+    bestStreak: 0,
+    firstKingSideRank: null,
   },
   {
     id: "team3",
@@ -38,6 +44,9 @@ const defaultTeams = [
     players: ["", ""],
     score: 0,
     color: TEAM_COLORS[2],
+    currentStreak: 0,
+    bestStreak: 0,
+    firstKingSideRank: null,
   },
   {
     id: "team4",
@@ -45,6 +54,9 @@ const defaultTeams = [
     players: ["", ""],
     score: 0,
     color: TEAM_COLORS[3],
+    currentStreak: 0,
+    bestStreak: 0,
+    firstKingSideRank: null,
   },
 ];
 
@@ -92,6 +104,9 @@ function App() {
         merged.teams = merged.teams.map((team, i) => ({
           ...team,
           color: team.color || TEAM_COLORS[i % TEAM_COLORS.length],
+          currentStreak: team.currentStreak ?? 0,
+          bestStreak: team.bestStreak ?? 0,
+          firstKingSideRank: team.firstKingSideRank ?? null,
         }));
         return merged;
       }
@@ -291,6 +306,9 @@ function App() {
             players: ["", ""],
             score: 0,
             color: TEAM_COLORS[prev.teams.length % TEAM_COLORS.length],
+            currentStreak: 0,
+            bestStreak: 0,
+            firstKingSideRank: null,
           },
         ],
         positions: { ...prev.positions, queue: [...prev.positions.queue, id] },
@@ -346,12 +364,18 @@ function App() {
   const startMatch = () => {
     setState((prev) => {
       const minutes = prev.durationMinutes || 15;
+      const teams = prev.teams.map((t) =>
+        t.id === prev.positions.king && t.firstKingSideRank == null
+          ? { ...t, firstKingSideRank: 1 }
+          : t,
+      );
       return {
         ...prev,
         started: true,
         isRunning: true,
         durationMinutes: minutes,
         remainingSeconds: minutes * 60,
+        teams,
         history: [snapshot(prev)],
         lastAction: "Match started",
       };
@@ -384,9 +408,16 @@ function App() {
         winnerSide === "king" ? "King side won" : "Challenger side won";
 
       if (winnerSide === "king") {
-        nextState.teams = nextState.teams.map((team) =>
-          team.id === prevKing ? { ...team, score: team.score + 1 } : team,
-        );
+        nextState.teams = nextState.teams.map((team) => {
+          if (team.id !== prevKing) return team;
+          const currentStreak = team.currentStreak + 1;
+          return {
+            ...team,
+            score: team.score + 1,
+            currentStreak,
+            bestStreak: Math.max(team.bestStreak, currentStreak),
+          };
+        });
         queue.push(prevChallenger);
         nextState.positions = {
           ...prev.positions,
@@ -394,6 +425,20 @@ function App() {
           queue,
         };
       } else {
+        const nextRank =
+          Math.max(
+            0,
+            ...nextState.teams.map((t) => t.firstKingSideRank ?? 0),
+          ) + 1;
+        nextState.teams = nextState.teams.map((team) => {
+          if (team.id === prevKing) {
+            return { ...team, currentStreak: 0 };
+          }
+          if (team.id === prevChallenger && team.firstKingSideRank == null) {
+            return { ...team, firstKingSideRank: nextRank };
+          }
+          return team;
+        });
         queue.push(prevKing);
         nextState.positions = {
           ...prev.positions,
@@ -579,28 +624,36 @@ function App() {
   const lbOrderRef = useRef(null);
 
   const stableLeaderboard = useMemo(() => {
-    const scores = {};
-    for (const t of state.teams) scores[t.id] = t.score;
+    const teamsById = {};
+    for (const t of state.teams) teamsById[t.id] = t;
+
+    // Ascending rank value: null/never-king sorts as worst.
+    const rankCmp = (a, b) => {
+      if (a.score !== b.score) return a.score - b.score;
+      if (a.bestStreak !== b.bestStreak) return a.bestStreak - b.bestStreak;
+      const aRank = a.firstKingSideRank ?? Infinity;
+      const bRank = b.firstKingSideRank ?? Infinity;
+      return bRank - aRank;
+    };
 
     if (!lbOrderRef.current) {
-      // Initial sort by score ascending, tiebreak by original team order
-      const sorted = [...state.teams].sort((a, b) => a.score - b.score);
+      const sorted = [...state.teams].sort(rankCmp);
       lbOrderRef.current = sorted.map((t) => t.id);
     }
 
     // Remove deleted teams, add new ones at the start (lowest)
-    const prev = lbOrderRef.current.filter((id) => id in scores);
+    const prev = lbOrderRef.current.filter((id) => id in teamsById);
     for (const t of state.teams) {
       if (!prev.includes(t.id)) prev.unshift(t.id);
     }
 
-    // Bubble sort: only swap adjacent pairs when the left one is STRICTLY higher
+    // Bubble sort: only swap adjacent pairs when the left one strictly outranks the right
     const order = [...prev];
     let swapped = true;
     while (swapped) {
       swapped = false;
       for (let i = 0; i < order.length - 1; i++) {
-        if (scores[order[i]] > scores[order[i + 1]]) {
+        if (rankCmp(teamsById[order[i]], teamsById[order[i + 1]]) > 0) {
           [order[i], order[i + 1]] = [order[i + 1], order[i]];
           swapped = true;
         }
@@ -608,7 +661,7 @@ function App() {
     }
 
     lbOrderRef.current = order;
-    return order.map((id) => state.teams.find((t) => t.id === id));
+    return order.map((id) => teamsById[id]);
   }, [state.teams]);
 
   // Leaderboard FLIP animation
@@ -678,7 +731,13 @@ function App() {
       remainingSeconds: (prev.durationMinutes || 15) * 60,
       history: [],
       lastAction: "",
-      teams: prev.teams.map((team) => ({ ...team, score: 0 })),
+      teams: prev.teams.map((team) => ({
+        ...team,
+        score: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        firstKingSideRank: null,
+      })),
     }));
   };
 
@@ -1209,7 +1268,7 @@ function App() {
                 <div
                   key="king"
                   ref={setCardRef(state.positions.king)}
-                  className="court-card"
+                  className="court-card court-card-king"
                   style={{ "--team-color": kingTeam?.color }}
                 >
                   <div className="position-label">
@@ -1237,6 +1296,11 @@ function App() {
                     </div>
                   )}
                   <div className="court-score">{kingTeam?.score ?? 0}</div>
+                  {kingTeam?.currentStreak > 0 && (
+                    <div className="court-streak">
+                      🔥{kingTeam.currentStreak}
+                    </div>
+                  )}
                   <button
                     onClick={() => animatedRecordRound("king")}
                     className="win-btn"
@@ -1293,6 +1357,9 @@ function App() {
                       </div>
                     )}
                   </div>
+                  {team.bestStreak > 0 && (
+                    <div className="queue-card-streak">🔥{team.bestStreak}</div>
+                  )}
                   <div className="queue-card-score">{team.score}</div>
                 </div>
               ))}
@@ -1390,6 +1457,14 @@ function App() {
                       </div>
                     )}
                   </div>
+                  {team.firstKingSideRank != null && (
+                    <div className="queue-card-rank">
+                      👑#{team.firstKingSideRank}
+                    </div>
+                  )}
+                  {team.bestStreak > 0 && (
+                    <div className="queue-card-streak">🔥{team.bestStreak}</div>
+                  )}
                   <div className="queue-card-score">{team.score}</div>
                 </div>
               ))}

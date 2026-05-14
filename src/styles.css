@@ -518,6 +518,34 @@ label {
   color: var(--team-color, #94a3b8);
 }
 
+.queue-card-streak,
+.queue-card-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.queue-card-rank {
+  color: #eab308;
+}
+
+.court-streak {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f97316;
+  letter-spacing: 0.04em;
+  margin-top: -2px;
+}
+
+.light-theme .queue-card-streak {
+  color: #64748b;
+}
+
 /* ── Court area ── */
 
 .court-area {
@@ -558,6 +586,13 @@ label {
     color-mix(in srgb, var(--team-color, #3b82f6) 20%, rgba(15, 23, 42, 0.98))
       100%
   );
+}
+
+.court-card-king {
+  border: 2px solid #eab308;
+  box-shadow:
+    0 0 0 1px rgba(234, 179, 8, 0.25),
+    0 0 32px rgba(234, 179, 8, 0.18);
 }
 
 .position-label {
