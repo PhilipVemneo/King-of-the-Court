@@ -589,10 +589,111 @@ label {
 }
 
 .court-card-king {
-  border: 2px solid #eab308;
+  --king-border-color: #eab308;
+  --king-halo-rgb: 234, 179, 8;
+  --king-halo-alpha-1: 0.25;
+  --king-halo-alpha-2: 0.18;
+  --fire-top-rgb: 254, 215, 102;
+  --fire-mid-rgb: 249, 115, 22;
+  --fire-bot-rgb: 239, 68, 68;
+  --fire-top-alpha: 0.85;
+  --fire-mid-alpha: 0.7;
+  --fire-bot-alpha: 0.45;
+  --fire-glow-alpha-1: 0.55;
+  --fire-glow-alpha-2: 0.7;
+  --fire-blend: normal;
+
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--king-border-color);
   box-shadow:
-    0 0 0 1px rgba(234, 179, 8, 0.25),
-    0 0 32px rgba(234, 179, 8, 0.18);
+    0 0 0 1px rgba(var(--king-halo-rgb), var(--king-halo-alpha-1)),
+    0 0 32px rgba(var(--king-halo-rgb), var(--king-halo-alpha-2));
+  animation: king-fire-glow 2.4s ease-in-out infinite;
+}
+
+.court-card-king::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 65%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    rgba(var(--fire-top-rgb), var(--fire-top-alpha)) 0%,
+    rgba(var(--fire-mid-rgb), var(--fire-mid-alpha)) 25%,
+    rgba(var(--fire-bot-rgb), var(--fire-bot-alpha)) 55%,
+    rgba(var(--fire-bot-rgb), 0) 80%
+  );
+  filter: blur(10px);
+  opacity: var(--streak-intensity, 0);
+  mix-blend-mode: var(--fire-blend);
+  animation: king-fire-flicker 1.6s ease-in-out infinite;
+  z-index: 0;
+  transition: opacity 0.4s ease;
+}
+
+.court-card-king > * {
+  position: relative;
+  z-index: 1;
+}
+
+.light-theme .court-card-king {
+  --king-border-color: #b45309;
+  --king-halo-rgb: 180, 83, 9;
+  --king-halo-alpha-1: 0.5;
+  --king-halo-alpha-2: 0.35;
+  --fire-top-rgb: 250, 204, 21;
+  --fire-mid-rgb: 234, 88, 12;
+  --fire-bot-rgb: 185, 28, 28;
+  --fire-top-alpha: 0.95;
+  --fire-mid-alpha: 0.9;
+  --fire-bot-alpha: 0.7;
+  --fire-glow-alpha-1: 0.85;
+  --fire-glow-alpha-2: 1;
+  --fire-blend: multiply;
+}
+
+@keyframes king-fire-flicker {
+  0%,
+  100% {
+    transform: translateY(8%) scaleY(1) scaleX(1);
+  }
+  20% {
+    transform: translateY(2%) scaleY(1.12) scaleX(0.97);
+  }
+  45% {
+    transform: translateY(6%) scaleY(0.94) scaleX(1.04);
+  }
+  70% {
+    transform: translateY(3%) scaleY(1.08) scaleX(0.98);
+  }
+}
+
+@keyframes king-fire-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(var(--king-halo-rgb), var(--king-halo-alpha-1)),
+      0 0 32px rgba(var(--king-halo-rgb), var(--king-halo-alpha-2)),
+      0 0 calc(40px * var(--streak-intensity, 0))
+        calc(6px * var(--streak-intensity, 0))
+        rgba(
+          var(--fire-mid-rgb),
+          calc(var(--fire-glow-alpha-1) * var(--streak-intensity, 0))
+        );
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(var(--king-halo-rgb), var(--king-halo-alpha-1)),
+      0 0 32px rgba(var(--king-halo-rgb), var(--king-halo-alpha-2)),
+      0 0 calc(64px * var(--streak-intensity, 0))
+        calc(12px * var(--streak-intensity, 0))
+        rgba(
+          var(--fire-bot-rgb),
+          calc(var(--fire-glow-alpha-2) * var(--streak-intensity, 0))
+        );
+  }
 }
 
 .position-label {

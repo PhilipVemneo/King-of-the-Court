@@ -1269,7 +1269,13 @@ function App() {
                   key="king"
                   ref={setCardRef(state.positions.king)}
                   className="court-card court-card-king"
-                  style={{ "--team-color": kingTeam?.color }}
+                  style={{
+                    "--team-color": kingTeam?.color,
+                    "--streak-intensity": Math.min(
+                      (kingTeam?.currentStreak ?? 0) / 10,
+                      1,
+                    ),
+                  }}
                 >
                   <div className="position-label">
                     {kingLabel.toUpperCase()}
