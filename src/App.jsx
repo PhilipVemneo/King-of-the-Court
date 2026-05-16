@@ -451,6 +451,30 @@ function App() {
     });
   };
 
+  const nextChallenger = () => {
+    setState((prev) => {
+      if (
+        prev.phase !== "game" ||
+        !prev.started ||
+        prev.positions.queue.length === 0
+      ) {
+        return prev;
+      }
+      const prevChallenger = prev.positions.challenger;
+      const queue = [...prev.positions.queue];
+      const nextState = deepClone(prev);
+      nextState.history = [...prev.history, snapshot(prev)];
+      nextState.lastAction = "Challenger missed serve";
+      queue.push(prevChallenger);
+      nextState.positions = {
+        ...prev.positions,
+        challenger: queue.shift(),
+        queue,
+      };
+      return nextState;
+    });
+  };
+
   const undoAction = () => {
     setState((prev) => {
       const history = [...prev.history];
@@ -500,6 +524,11 @@ function App() {
   const animatedRecordRound = (winnerSide) => {
     triggerAnimation();
     recordRound(winnerSide);
+  };
+
+  const animatedNextChallenger = () => {
+    triggerAnimation();
+    nextChallenger();
   };
 
   const animatedUndo = () => {
@@ -1261,6 +1290,15 @@ function App() {
                     disabled={!state.started}
                   >
                     Challenger Wins
+                  </button>
+                  <button
+                    onClick={animatedNextChallenger}
+                    className="miss-btn"
+                    disabled={
+                      !state.started || state.positions.queue.length === 0
+                    }
+                  >
+                    Next Challenger
                   </button>
                 </div>
               );
